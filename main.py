@@ -10,13 +10,14 @@ import requests
 import json
 import re
 from memcache import Client
+from subprocess import call
 
 
 
 recorded = False
-filename = '/sys/class/gpio/gpio409/value'
-with open(filename, "r") as f:
-	last = f.read()
+start_button_pin_value_file = '/sys/class/gpio/gpio409/value'
+with open(start_button_pin_value_file, "r") as f:
+	last_start_button_pin_value = f.read()
 audio = ""
 
 
@@ -38,31 +39,6 @@ def gettoken():
 		return resp['access_token']
 	else:
 		return False
-
-		
-
-def play(f):    
-    device = alsaaudio.PCM()
-    device.setchannels(f.getnchannels())
-    device.setrate(f.getframerate())
-    if f.getsampwidth() == 1:
-        device.setformat(alsaaudio.PCM_FORMAT_U8)
-    # Otherwise we assume signed data, little endian
-    elif f.getsampwidth() == 2:
-        device.setformat(alsaaudio.PCM_FORMAT_S16_LE)
-    elif f.getsampwidth() == 3:
-        device.setformat(alsaaudio.PCM_FORMAT_S24_LE)
-    elif f.getsampwidth() == 4:
-        device.setformat(alsaaudio.PCM_FORMAT_S32_LE)
-    else:
-        raise ValueError('Unsupported format')
-    device.setperiodsize(320)
-    data = f.readframes(320)
-    while data:
-        # Read data from stdin
-        device.write(data)
-        data = f.readframes(320)
-		
 
 def alexa():
 	url = 'https://access-alexa-na.amazon.com/v1/avs/speechrecognizer/recognize'
@@ -93,7 +69,10 @@ def alexa():
 				('file', ('audio', inf, 'audio/L16; rate=16000; channels=1'))
 			]	
 		r = requests.post(url, headers=headers, files=files)
-	for v in r.headers['content-type'].split(";"):
+	for v in r.headers:
+		print(v + ": " + r.headers[v])
+	boundary = ''
+	for v in r.headers['Content-Type'].split(";"):
 		if re.match('.*boundary.*', v):
 			boundary =  v.split("=")[1]
 	data = r.content.split(boundary)
@@ -102,36 +81,20 @@ def alexa():
 			audio = d.split('\r\n\r\n')[1].rstrip('--')
 	with open("response.mp3", 'wb') as f:
 		f.write(audio)
-	os.system('mpg321 -q 1sec.mp3 response.mp3')
+	call(['mpg123', '-q', '1sec.mp3', 'response.mp3'])
 
 
 token = gettoken()
-os.system('mpg321 -q 1sec.mp3 hello.mp3')
+call(['mpg123', '-q', '1sec.mp3', 'hello.mp3'])
 while True:
-	with open(filename, "r") as f:
-		val = f.read().strip('\n')
-	if val != last:
-		last = val
-		if val == '1' and recorded == True:
-			with open('recording.wav', 'w') as rf:
-				rf.write(audio)
-			inp = None
+	with open(start_button_pin_value_file, "r") as f:
+		start_button_pin_value = f.read().strip('\n')
+	if start_button_pin_value != last_start_button_pin_value:
+		last_start_button_pin_value = start_button_pin_value
+		if start_button_pin_value == '1' and recorded == True:
 			alexa()
-		elif val == '0':
-			inp = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL)
-			inp.setchannels(1)
-			inp.setrate(16000)
-			inp.setformat(alsaaudio.PCM_FORMAT_S16_LE)
-			inp.setperiodsize(500)
-			audio = ""
-			with wave.open('beep.wav', 'rb') as f:
-				play(f)
-			l, data = inp.read()
-			if l:
-				audio += data
+		elif start_button_pin_value == '0':
+			# Button is pressed, so record
+			call(['play', 'beep.wav'])
+			call(['rec', '--clobber', '-r', '16k', '-b', '16', '-c', '1', '-e', 'signed-integer', 'recording.wav', 'silence', '1', '0.2', '1%', '1', '2.2', '2%'])
 			recorded = True
-	elif val == '0':
-		l, data = inp.read()
-		if l:
-			audio += data
-	

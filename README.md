@@ -6,6 +6,7 @@ If you're looking for the Raspberry Pi version its here https://github.com/samma
 ### Contributors
  
 * Sam Machin
+* William Zajac
  
 ---
  
@@ -24,7 +25,7 @@ Copy the contents of the repo into a new folder on the CHIP and then run the fol
 
 ```shell
 apt-get update
-apt-get install  libasound2-dev memcached python-pip
+apt-get install libasound2-dev memcached python-pip python-dev sox
 pip install -r requirements.txt
 ```
 
@@ -57,4 +58,3 @@ You'll probbly want to put the setup_gpio and main.py scripts into crontab or so
 * Improve the setup guide.
 * Improve the experience of setting up the token.
 * Add LED's to indicate status
-* ~~Port to RasPi~~ https://github.com/sammachin/AlexaPi
