@@ -1,7 +1,5 @@
 #!/usr/bin/python
 import time
-import alsaaudio
-import wave
 import os
 import random
 import os
