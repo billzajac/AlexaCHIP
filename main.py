@@ -19,7 +19,7 @@ with open(start_button_pin_value_file, "r") as f:
 audio = ""
 
 
-#Memcache Setup
+# Memcache Setup
 servers = ["127.0.0.1:11211"]
 mc = Client(servers, debug=1)
 
@@ -73,13 +73,25 @@ def alexa():
 	for v in r.headers['Content-Type'].split(";"):
 		if re.match('.*boundary.*', v):
 			boundary =  v.split("=")[1]
-	data = r.content.split(boundary)
-	for d in data:
-		if (len(d) >= 1024):
-			audio = d.split('\r\n\r\n')[1].rstrip('--')
-	with open("response.mp3", 'wb') as f:
-		f.write(audio)
-	call(['mpg123', '-q', '1sec.mp3', 'response.mp3'])
+	if len(boundary) > 0:
+		data = r.content.split("--" + boundary)
+		for d in data:
+			if (len(d) >= 1024):
+				# assumption: the mp3 file is always > 1024 bytes
+				# remove any whitespace at beginning or end
+				audio_with_space = d.split('\r\n\r\n')[1].rstrip('--') # final boundary also ends with --
+				audio = re.sub(r'\s+$', '', audio_with_space)
+				# print "AUDIO:" + audio + ":"
+			else:
+				#response_json = re.sub(r'.*({.*}).*', r'\1', d, flags=re.M) # can't seem to get this to work
+				response_json = re.sub(r'.*?({.+}).*', r'\1', re.sub('\n|\r', '', d))
+				if len(response_json) > 3:
+					print json.dumps(json.loads(response_json), sort_keys=True, indent=4, separators=(',', ': '))
+		with open("response.mp3", 'wb') as f:
+			f.write(audio)
+		call(['mpg123', '-q', '1sec.mp3', 'response.mp3'])
+	else:
+		print "Invalid response from Amazon, likely no audio heard."
 
 
 token = gettoken()
