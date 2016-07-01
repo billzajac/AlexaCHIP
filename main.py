@@ -89,13 +89,13 @@ def alexa():
 					print json.dumps(json.loads(response_json), sort_keys=True, indent=4, separators=(',', ': '))
 		with open("response.mp3", 'wb') as f:
 			f.write(audio)
-		call(['mpg123', '-q', '1sec.mp3', 'response.mp3'])
+		call(['play', '-q', '1sec.mp3', 'response.mp3'])
 	else:
 		print "Invalid response from Amazon, likely no audio heard."
 
 
 token = gettoken()
-call(['mpg123', '-q', '1sec.mp3', 'hello.mp3'])
+call(['play', '-q', '1sec.mp3', 'hello.mp3'])
 while True:
 	with open(start_button_pin_value_file, "r") as f:
 		start_button_pin_value = f.read().strip('\n')
